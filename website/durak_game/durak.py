@@ -186,13 +186,14 @@ class DurakGame:
         """Finishes a round of the game
 
         All cards are removed from the table.
-        The current player is updated: if the current player has broken,
-        he is allowed to throw cards, otherwise he is not.
         If the deck is not empty, new cards are distributed.
         If the deck is empty / has become empty, players that are finished are 
         transfered to the lobby.
-        If the game is finished, the in progress indicator is set to False and
-        the cards of all remaining players are removed.
+        If the game is finished, the in progress indicator is set to False,
+        the cards of all remaining players are removed, and every player is
+        removed from the players and added to the lobby.
+        Otherwise, the current player is updated: if the current player has 
+        broken, he is allowed to throw cards, otherwise he is not.
         Allow break and throwing started indicators are reset to False.
         All cheats are reset.
 
@@ -204,13 +205,6 @@ class DurakGame:
         """
         self.table_cards.clear()
 
-        if has_broken:
-            self.current_player = self.next_player(
-                self.current_player)
-        else:
-            self.current_player = self.next_player(
-                self.next_player(self.current_player))
-
         if not self.deck.is_empty():
             self.distribute_new_cards()
         # No else: need to check again because the deck might have become empty
@@ -219,8 +213,17 @@ class DurakGame:
 
         if self.is_finished():
             self.is_in_progress = False
+
             for player in self.players:
                 player.cards = []
+                self.lobby.append(player)
+
+            self.players = []
+        else:
+            if has_broken:
+                self.current_player = self.next_player(self.current_player)
+            else:
+                self.current_player = self.next_player(self.next_player(self.current_player))
 
         self.throwing_started = False
         self.next_allows_break = False
@@ -483,7 +486,7 @@ class DurakGame:
                     return False
         return True
 
-    def allow_break_cards(self, player: Player):
+    def allow_break_cards(self, player: Player) -> bool:
         """ Indicate an allow break by a player
 
         The flag is set based on whether the player is the previous / next
@@ -492,12 +495,19 @@ class DurakGame:
         Args:
             player: Player
                 The player allowing breaking of cards
+
+        Returns: bool
+            True if the player has succesfully allowed breaking cards
         """
+        allowed_break = False
         if player == self.next_player(self.current_player):
             self.next_allows_break = True
+            allowed_break = True
         # No elif: if 2 players then next == prev
         if player == self.prev_player(self.current_player):
             self.prev_allows_break = True
+            allowed_break = True
+        return allowed_break
 
     def move_top_card(self, player: Player, top_card: Card,
                       new_bottom_card: Card) -> bool:
@@ -631,7 +641,7 @@ class DurakGame:
         self.current_player = self.next_player(self.current_player)
         return True
 
-    def pass_on_using_trump(self, player):
+    def pass_on_using_trump(self, player) -> bool:
         """Pass on the cards to the next player using trump card
 
         If passing on is not possible, nothing happens and False is returned.
@@ -680,6 +690,7 @@ class DurakGame:
     def is_legal_pass_on(self, cards: List[Card]) -> bool:
         """Test whether passing on is legal
 
+        False if no cards are given
         False if there are no cards on the table.
         False if not all cards on the table have the same symbol.
         False if not all given cards have the same symbol as cards on the table.
@@ -692,10 +703,12 @@ class DurakGame:
         """
         if not cards:
             return False
+        if not self.table_cards:
+            return False
         symbol = next(iter(self.table_cards)).symbol
         return (all(card.symbol == symbol for card in cards)
             and all(bottom_card.symbol == symbol
-                for bottom_card, top_card in self.table_cards.items()))
+                for bottom_card, _ in self.table_cards.items()))
 
     def is_legal_pass_on_using_trump(self) -> bool:
         """Test whether passing on using trump is legal

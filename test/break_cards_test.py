@@ -56,8 +56,8 @@ def test_legal_break_card_illegal_player(game):
 # PERFORMING BREAK
 
 
-def test_break_legal(game):
-    """ Legal breaking of a card """
+def test_break_card(game):
+    """ Regular breaking of a card """
     game.start_game()
 
     p1 = game.prev_player(game.current_player)
@@ -66,47 +66,15 @@ def test_break_legal(game):
     bottom_card = Card(Card.HEARTS, Card.SEVEN)
     top_card = Card(Card.HEARTS, Card.SEVEN)
     # Make sure the player can break the card
-    p1.add_cards([bottom_card])
-    p2.add_cards([top_card])
+    p1.cards = [bottom_card]
+    p2.cards = [top_card]
 
     game.throw_cards(p1, [bottom_card])
     game.break_card(p2, bottom_card, top_card)
 
     assert game.table_cards[bottom_card] == top_card
-    assert p2.get_card_count() == 6
-
-def test_break_no_bottom(game):
-    """ There is no bottom card """
-    game.start_game()
-    p = game.current_player
-    card = p.cards[0]
-
-    is_broken = game.break_card(p, None, card)
-    assert not is_broken
-    assert card in p.cards
-    assert not card in game.table_cards
-    assert not card in list(game.table_cards.values())
-    assert game.current_player == p
-
-def test_break_top_full(game):
-    """ There is already another card on top """
-    game.start_game()
-
-    p1 = game.next_player(game.current_player)
-    p2 = game.current_player
-
-    bottom_card = Card(Card.HEARTS, Card.SEVEN)
-    top_card = Card(Card.HEARTS, Card.SEVEN)
-    # Make sure the player can break the card
-    p1.add_cards([bottom_card])
-    p2.add_cards([top_card])
-
-    game.throw_cards(p1, [bottom_card])
-    is_broken = game.break_card(p2, bottom_card, top_card)
-
-    assert not is_broken
-    assert top_card in p2.cards
-    assert game.current_player == p2
+    assert p2.get_card_count() == 0
+    assert top_card not in p2.cards
 
 
 # BREAKING CARDS
@@ -195,7 +163,32 @@ def test_legal_break_cards_illegal_lower_trump(game):
 
 
 # PERFORMING BREAK CARDS
-# TODO 
+
+
+def test_break_cards(game):
+    """ Regular breaking of cards 
+
+    We only test whether the round has been finished correctly by checking that
+    the current player has been set to the next player. Full functionality of
+    finishing a round is not tested here. 
+    """
+    game.start_game()
+    p1 = game.current_player
+    p2 = game.next_player(p1)
+    p3 = game.prev_player(p1)
+
+    p2.add_cards([Card(Card.HEARTS, Card.SEVEN)])
+    p1.add_cards([Card(Card.HEARTS, Card.EIGHT)])
+
+    game.throw_cards(p2, [Card(Card.HEARTS, Card.SEVEN)])
+    game.break_card(p1, Card(Card.HEARTS, Card.SEVEN), Card(Card.HEARTS, Card.EIGHT))
+
+    game.allow_break_cards(p2)
+    game.allow_break_cards(p3)
+
+    is_broken = game.break_cards(p1)
+    assert is_broken
+    assert game.current_player == p2
 
 
 # ALLOWING BREAK CARDS
@@ -247,7 +240,7 @@ def test_possible_move_top_card_possible(game):
     game.start_game()
     p = game.current_player
     game.table_cards = {
-        Card(Card.CLUBS, Card.SEVEN): Card(Card.HEARTS, Card.NINE),
+        Card(Card.HEARTS, Card.SEVEN): Card(Card.HEARTS, Card.NINE),
         Card(Card.HEARTS, Card.EIGHT): None
     }
 
@@ -309,4 +302,20 @@ def test_possible_move_top_card_impossible_already_on_top(game):
 
 
 # PERFORMING MOVE TOP CARD
-# TODO
+
+
+def test_move_top_card(game):
+    """ Regular moving of top card """
+    game.start_game()
+    p = game.current_player
+    game.table_cards = {
+        Card(Card.HEARTS, Card.SEVEN): Card(Card.HEARTS, Card.NINE),
+        Card(Card.HEARTS, Card.EIGHT): None
+    }
+
+    is_moved = game.move_top_card(p, Card(Card.HEARTS, Card.NINE),
+                                     Card(Card.HEARTS, Card.EIGHT))
+
+    assert is_moved
+    assert game.table_cards[Card(Card.HEARTS, Card.SEVEN)] is None
+    assert game.table_cards[Card(Card.HEARTS, Card.EIGHT)] == Card(Card.HEARTS, Card.NINE)
